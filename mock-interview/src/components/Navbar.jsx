@@ -78,9 +78,9 @@ export default function Navbar() {
             </ul>
 
             {/* Login Button */}
-            <button className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            <Link to="/login" className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Login
-            </button>
+            </Link>
           </div>
 
           {/* Mobile Hamburger Icon */}
@@ -137,12 +137,12 @@ export default function Navbar() {
           >
             Resume Analyzer
           </Link>
-          <button 
+          <Link to="/login"
             className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] py-3 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transition-all duration-300 mt-4"
             onClick={() => setIsMenuOpen(false)}
           >
             Login
-          </button>
+          </Link>
         </div>
       </div>
     </nav>
