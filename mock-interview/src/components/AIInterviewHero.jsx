@@ -25,7 +25,7 @@ export default function AIInterviewHero() {
   }, [typedText, currentWordIndex]);
 
   return (
-    <div className="bg-white pt-24 pb-12">
+    <div className="bg-white pb-12">
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="text-center">
