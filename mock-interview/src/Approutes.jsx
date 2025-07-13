@@ -5,9 +5,7 @@ import AIInterviewHero from './components/AIInterviewHero';
 function Approutes() {
   return (
     <Router>
-      <ScrollToTop />
       <Navbar />
-      <SearchPage />
       <Routes>
         {/* Main Routes */}
         <Route path="/bar" element={<Navbar />} />
