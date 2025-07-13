@@ -1,6 +1,7 @@
 import './App.css'
 import AIInterviewHero from './components/AIInterviewHero'
 import FeatureSection from './components/FeatureSection'
+import Footer from './components/Footer'
 import Navbar from './components/Navbar'
 function App() {
 
@@ -9,6 +10,7 @@ function App() {
     <Navbar />
 <AIInterviewHero />
 <FeatureSection />
+<Footer />
     </>
   )
 }
