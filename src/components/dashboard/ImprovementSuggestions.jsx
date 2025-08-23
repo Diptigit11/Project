@@ -10,7 +10,7 @@ const ImprovementSuggestions = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Improvement Suggestions</h2>
+<h2 className="text-xl font-semibold mb-4 text-[#012A4A]">Improvement Suggestions</h2>
       <ul className="list-disc list-inside space-y-2">
         {suggestions.map((s, i) => (
           <li key={i}>{s}</li>

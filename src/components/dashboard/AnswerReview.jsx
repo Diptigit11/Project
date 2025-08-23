@@ -22,9 +22,10 @@ const AnswerReview = () => {
       {answers.map((a, i) => (
         <div key={i} className="mb-4 p-4 border rounded-lg">
           <p className="font-medium">Q: {a.q}</p>
-          <p className="text-blue-600 mt-2">Your Answer: {a.userAns}</p>
-          <p className="text-green-600 mt-2">Correct Answer: {a.correctAns}</p>
-          <p className="text-red-600 mt-2">Feedback: {a.feedback}</p>
+         <p className="text-[#013A5A] mt-2">Your Answer: {a.userAns}</p>
+<p className="text-[#2563EB] mt-2">Correct Answer: {a.correctAns}</p>
+<p className="text-[#DC2626] mt-2">Feedback: {a.feedback}</p>
+
         </div>
       ))}
     </div>

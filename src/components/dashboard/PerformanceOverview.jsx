@@ -14,9 +14,10 @@ const PerformanceOverview = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
           <div key={i} className="text-center">
-            <div className="w-20 h-20 mx-auto rounded-full border-4 border-blue-500 flex items-center justify-center text-lg font-bold">
-              {stat.value}%
-            </div>
+           <div className="w-20 h-20 mx-auto rounded-full border-4 border-[#FACC15] flex items-center justify-center text-lg font-bold text-[#012A4A]">
+  {stat.value}%
+</div>
+
             <p className="mt-2 font-medium">{stat.label}</p>
           </div>
         ))}

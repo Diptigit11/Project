@@ -18,9 +18,9 @@ const SpeechToneAnalysis = () => {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
-              className="bg-blue-500 h-3 rounded-full"
-              style={{ width: `${t.score}%` }}
-            />
+  className="h-3 rounded-full bg-gradient-to-r from-[#012A4A] to-[#013A5A]"
+  style={{ width: `${t.score}%` }}
+/>
           </div>
         </div>
       ))}
