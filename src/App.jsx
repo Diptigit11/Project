@@ -9,6 +9,8 @@ import InterviewSetup from './components/InterviewSetup';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Profile from './components/auth/Profile';
+import InterviewScreen from './components/interviewscreen/InterviewScreen';
+import Dashboard from './components/dashboard/Dashboard';
 
 function Approutes() {
   return (
@@ -23,6 +25,9 @@ function Approutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile/>} />
+        <Route path="/interviewscreen" element={<InterviewScreen/>} />
+                <Route path="/dashboard" element={<Dashboard/>} />
+
 
       </Routes>
       <Footer />

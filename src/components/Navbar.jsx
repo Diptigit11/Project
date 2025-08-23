@@ -78,8 +78,11 @@ export default function Navbar() {
             </ul>
 
             {/* Login Button */}
-            <Link to="/login" className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            <Link to="/login" className="bg-gradient-to-r from-yellow-400 to-yellow-500  text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Login
+            </Link>
+            <Link to="/register" className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+              Signup
             </Link>
           </div>
 
@@ -142,6 +145,12 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen(false)}
           >
             Login
+          </Link>
+          <Link to="/register"
+            className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] py-3 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transition-all duration-300 mt-4"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Signup
           </Link>
         </div>
       </div>

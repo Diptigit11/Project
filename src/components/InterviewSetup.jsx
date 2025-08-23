@@ -5,27 +5,46 @@ import {
   FileText,
   PlayCircle,
   Sparkles,
-  CheckCircle,
   Users,
   Brain,
   Settings,
+  Building2,
+  Code2,
+  Clock,
+  ClipboardList,
 } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 export default function InterviewSetup() {
   const [resumeFile, setResumeFile] = useState(null);
   const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const [type, setType] = useState("technical");
   const [difficulty, setDifficulty] = useState("medium");
+  const [includeCoding, setIncludeCoding] = useState(false);
+  const [language, setLanguage] = useState("javascript");
+  const [duration, setDuration] = useState("medium");
 
   const handleFileChange = (e) => setResumeFile(e.target.files[0]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!resumeFile || !role || !type) {
-      alert("Please fill all fields");
+    if (!resumeFile || !role || !type || !jobDescription) {
+      alert("Please fill all required fields");
       return;
     }
-    const setupData = { resumeName: resumeFile.name, role, type, difficulty };
+    const setupData = {
+      resumeName: resumeFile.name,
+      role,
+      company,
+      jobDescription,
+      type,
+      difficulty,
+      includeCoding,
+      language: includeCoding ? language : null,
+      duration,
+    };
     console.log("Interview setup data:", setupData);
     alert("Interview setup complete!");
   };
@@ -42,8 +61,14 @@ export default function InterviewSetup() {
     { value: "hard", label: "Hard", color: "text-red-600" },
   ];
 
+  const durations = [
+    { value: "short", label: "Short (5 Qs)" },
+    { value: "medium", label: "Medium (10 Qs)" },
+    { value: "long", label: "Long (15 Qs)" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white px-4 pt-25 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white px-4 pt-20 pb-12">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -95,6 +120,41 @@ export default function InterviewSetup() {
               <option value="data">Data Scientist</option>
               <option value="devops">DevOps Engineer</option>
             </select>
+          </div>
+
+          {/* Target Company */}
+          <div>
+  <label className="text-sm font-semibold text-[#012A4A] mb-1 flex items-center gap-2">
+    <Building2 size={18} /> Target Company
+  </label>
+  <input
+    type="text"
+    value={company}
+    onChange={(e) => setCompany(e.target.value)}
+    placeholder="e.g. Google, Microsoft, StartupX"
+    className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700"
+  />
+  {!company && (
+    <p className="text-xs text-gray-500 mt-1">
+      Default: <span className="font-medium">General Interview</span>
+    </p>
+  )}
+</div>
+
+
+          {/* Job Description */}
+          <div>
+            <label className="text-sm font-semibold text-[#012A4A] mb-1 flex items-center gap-2">
+              <ClipboardList size={18} /> Job Description
+            </label>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the job description here..."
+              rows={4}
+              className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700"
+              required
+            />
           </div>
 
           {/* Interview Type */}
@@ -156,14 +216,66 @@ export default function InterviewSetup() {
             </div>
           </div>
 
+          {/* Coding Toggle */}
+          {type === "technical" && (
+            <div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-[#012A4A] mb-1">
+                <Code2 size={18} /> Include Coding Questions?
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={includeCoding}
+                  onChange={(e) => setIncludeCoding(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm text-gray-700">Yes, add live coding tasks</span>
+              </div>
+              {includeCoding && (
+                <div className="mt-3">
+                  <label className="text-sm font-medium text-gray-600">Preferred Language</label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700 mt-1"
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="c++">C++</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Duration */}
+          <div>
+            <label className="text-sm font-semibold text-[#012A4A] mb-2 flex items-center gap-2">
+              <Clock size={18} /> Interview Duration
+            </label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700"
+            >
+              {durations.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Submit Button */}
           <div>
-            <button
+            <Link
+            to="/interviewscreen"
               type="submit"
               className="w-full bg-gradient-to-r from-[#012A4A] to-[#013A5A] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-[#024169] hover:to-[#035274] transition-all"
             >
               <PlayCircle size={20} /> Start Interview
-            </button>
+            </Link>
           </div>
         </form>
       </div>
