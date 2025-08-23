@@ -1,31 +1,43 @@
 import React from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const SpeechToneAnalysis = () => {
-  const tones = [
-    { tone: "Confident", score: 70 },
-    { tone: "Nervous", score: 20 },
-    { tone: "Calm", score: 10 },
-  ];
+const pieData = [
+  { name: "Confident", value: 70, color: " #012A4A" }, // yellow
+  { name: "Nervous", value: 20, color: "#F59E0B" },   // amber
+  { name: "Calm", value: 10, color: "#FACC15 " },      // navy
+];
 
+export default function SpeechToneAnalysis() {
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Speech Tone Analysis</h2>
-      {tones.map((t, i) => (
-        <div key={i} className="mb-3">
-          <div className="flex justify-between text-sm mb-1">
-            <span>{t.tone}</span>
-            <span>{t.score}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-  className="h-3 rounded-full bg-gradient-to-r from-[#012A4A] to-[#013A5A]"
-  style={{ width: `${t.score}%` }}
-/>
-          </div>
-        </div>
-      ))}
+    <div className="bg-white rounded-xl shadow-md p-6">
+      <h2 className="text-lg font-semibold text-[#012A4A]">
+        Speech Tone Analysis
+      </h2>
+      <ResponsiveContainer width="100%" height={250}>
+        <PieChart>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={90}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {pieData.map((entry, index) => (
+              <Cell key={index} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "white",
+              border: "none",
+              boxShadow: "0px 2px 6px rgba(0,0,0,0.15)",
+            }}
+            itemStyle={{ color: "#012A4A", fontWeight: 500 }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
   );
-};
-
-export default SpeechToneAnalysis;
+}
