@@ -27,6 +27,7 @@ export default function CameraPreview() {
         playsInline
         className="w-full rounded-lg border border-gray-200"
       ></video>
+      
     </div>
   );
 }

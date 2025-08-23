@@ -44,7 +44,7 @@ export default function AnswerFeedback() {
               <td className="p-2 border border-gray-200 text-gray-700">
                 {a.userAns}
               </td>
-              <td className="p-2 border border-gray-200 text-[#DC2626] font-semibold">
+<td className="p-2 border border-gray-200 text-yellow-800 font-semibold">
                 {a.feedback}
               </td>
             </tr>
