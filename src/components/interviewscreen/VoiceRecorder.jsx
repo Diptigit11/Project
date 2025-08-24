@@ -1,66 +1,46 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useRef } from "react";
 import { Mic, Square, X } from "lucide-react";
 
-export default function VoiceRecorder({ questionId, initialAudioURL = null, onSave }) {
+export default function VoiceRecorder({ onSave }) {
+  const [audioURL, setAudioURL] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState(initialAudioURL);
   const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const streamRef = useRef(null);
+  const chunksRef = useRef([]);
 
-  useEffect(() => {
-    setIsRecording(false);
-    setAudioURL(initialAudioURL || null);
-    stopStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionId, initialAudioURL]);
-
-  useEffect(() => () => stopStream(), []);
-
-  const stopStream = () => {
+  const startRecording = async () => {
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    } catch {}
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        setAudioURL(url);
+        onSave?.(blob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Mic error:", err);
+      alert("⚠️ Please allow microphone access & run on localhost/https");
+    }
   };
 
-  const toggleRecording = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
 
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
-
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          const url = URL.createObjectURL(blob);
-          setAudioURL(url);
-          stopStream();
-          onSave?.(url);
-        };
-
-        mediaRecorder.start();
-        setIsRecording(true);
-      } catch (err) {
-        console.error("Mic access error:", err);
-        alert("⚠️ Please allow microphone access.");
-      }
-    } else {
-      try {
-        mediaRecorderRef.current?.stop();
-      } finally {
-        setIsRecording(false);
-      }
-    }
+  const toggleRecording = () => {
+    if (isRecording) stopRecording();
+    else startRecording();
   };
 
   const clearRecording = () => {

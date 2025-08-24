@@ -8,7 +8,7 @@ import FeatureSection from './components/FeatureSection';
 import InterviewSetup from './components/InterviewSetup';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import Profile from './components/auth/Profile';
+import Profile from './components/Profile';
 import InterviewScreen from './components/interviewscreen/InterviewScreen';
 import Dashboard from './components/dashboard/Dashboard';
 

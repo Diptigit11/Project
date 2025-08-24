@@ -14,14 +14,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo + Brand */}
           <div className="flex items-center space-x-3">
-            <div className="relative">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-                alt="Logo"
-                className="h-8 w-8 object-contain"
-              />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"></div>
-            </div>
+
             <span className="text-white font-bold text-2xl tracking-wide">
               Mock<span className="text-yellow-400">Interview</span>
             </span>
@@ -33,11 +26,10 @@ export default function Navbar() {
               <li>
                 <Link
                   to="/interview"
-                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-                    isActive("/interview") 
-                      ? "text-yellow-400 bg-white/10" 
+                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/interview")
+                      ? "text-yellow-400 bg-white/10"
                       : "hover:text-yellow-300"
-                  }`}
+                    }`}
                 >
                   Interview
                   {isActive("/interview") && (
@@ -48,11 +40,10 @@ export default function Navbar() {
               <li>
                 <Link
                   to="/about"
-                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-                    isActive("/about") 
-                      ? "text-yellow-400 bg-white/10" 
+                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/about")
+                      ? "text-yellow-400 bg-white/10"
                       : "hover:text-yellow-300"
-                  }`}
+                    }`}
                 >
                   About Us
                   {isActive("/about") && (
@@ -63,11 +54,10 @@ export default function Navbar() {
               <li>
                 <Link
                   to="/analyzer"
-                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-                    isActive("/analyzer") 
-                      ? "text-yellow-400 bg-white/10" 
+                  className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/analyzer")
+                      ? "text-yellow-400 bg-white/10"
                       : "hover:text-yellow-300"
-                  }`}
+                    }`}
                 >
                   Resume Analyzer
                   {isActive("/analyzer") && (
@@ -84,11 +74,21 @@ export default function Navbar() {
             <Link to="/register" className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#012A4A] px-6 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wide hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Signup
             </Link>
+           <div className="relative">
+  <Link to="/profile">
+    <img
+      src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+      alt="Logo"
+      className="h-8 w-8 object-contain"
+    />
+    <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"></div>
+  </Link>
+</div>
           </div>
 
           {/* Mobile Hamburger Icon */}
           <div className="lg:hidden text-white">
-            <button 
+            <button
               onClick={toggleMenu}
               className="p-2 rounded-lg hover:bg-white/10 transition-colors duration-300"
             >
@@ -113,29 +113,26 @@ export default function Navbar() {
       {/* Mobile Dropdown */}
       <div className={`lg:hidden overflow-hidden transition-all duration-300 ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
         <div className="bg-[#013A5A] px-6 py-4 space-y-3 text-white font-medium border-t border-blue-800/30">
-          <Link 
-            to="/interview" 
-            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-              isActive("/interview") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
-            }`}
+          <Link
+            to="/interview"
+            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/interview") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
+              }`}
             onClick={() => setIsMenuOpen(false)}
           >
             Interview
           </Link>
-          <Link 
-            to="/about" 
-            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-              isActive("/about") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
-            }`}
+          <Link
+            to="/about"
+            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/about") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
+              }`}
             onClick={() => setIsMenuOpen(false)}
           >
             About Us
           </Link>
-          <Link 
-            to="/analyzer" 
-            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${
-              isActive("/analyzer") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
-            }`}
+          <Link
+            to="/analyzer"
+            className={`block px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/analyzer") ? "text-yellow-400 bg-white/10" : "hover:text-yellow-300"
+              }`}
             onClick={() => setIsMenuOpen(false)}
           >
             Resume Analyzer
@@ -152,6 +149,14 @@ export default function Navbar() {
           >
             Signup
           </Link>
+          <div className="relative">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+              alt="Logo"
+              className="h-8 w-8 object-contain"
+            />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"></div>
+          </div>
         </div>
       </div>
     </nav>

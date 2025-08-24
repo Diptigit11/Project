@@ -7,6 +7,11 @@ const barData = [
   { name: "Q3", score: 82 },
   { name: "Q4", score: 70 },
   { name: "Q5", score: 90 },
+    { name: "Q1", score: 75 },
+  { name: "Q2", score: 60 },
+  { name: "Q3", score: 82 },
+  { name: "Q4", score: 70 },
+  { name: "Q5", score: 90 },
 ];
 
 export default function QuestionScores() {
@@ -30,22 +35,21 @@ export default function QuestionScores() {
           <YAxis />
           <Tooltip/>
 
-          <Bar
-            dataKey="score"
-            radius={[6, 6, 0, 0]}
-            onMouseLeave={() => setActiveIndex(null)}
-            
-          >
-            {barData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={
-                  activeIndex === index ? "url(#gradient-hover)" : "#0d2862ff"
-                }
-                onMouseEnter={() => setActiveIndex(index)}
-              />
-            ))}
-          </Bar>
+       <Bar
+  dataKey="score"
+  radius={[6, 6, 0, 0]}
+  barSize={40}   // 👈 reduces bar width
+  onMouseLeave={() => setActiveIndex(null)}
+>
+  {barData.map((entry, index) => (
+    <Cell
+      key={`cell-${index}`}
+      fill={activeIndex === index ? "url(#gradient-hover)" : "#0d2862ff"}
+      onMouseEnter={() => setActiveIndex(index)}
+    />
+  ))}
+</Bar>
+
         </BarChart>
       </ResponsiveContainer>
     </div>
