@@ -125,49 +125,48 @@ export default function InterviewScreen() {
       setCurrentIndex((p) => p + 1);
     }
   };
+const handleFinishInterview = async () => {
+  try {
+    // Save the interview session
+    const sessionData = {
+      metadata,
+      questions,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
 
-  const handleFinishInterview = async () => {
-    try {
-      // Save the interview session
-      const sessionData = {
-        metadata,
-        questions,
-        startedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-      };
+    const response = await fetch("http://localhost:5000/api/save-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sessionData,
+        answers,
+      }),
+    });
 
-      const response = await fetch("http://localhost:5000/api/save-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionData,
-          answers,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Session saved:", result);
-        
-        // Store answers and questions for the dashboard
-        localStorage.setItem("interviewAnswers", JSON.stringify(answers));
-        localStorage.setItem("lastInterviewSession", JSON.stringify(sessionData));
-        
-        // Navigate to dashboard
-        navigate("/dashboard");
-      } else {
-        console.error("Failed to save session");
-        // Still navigate to dashboard even if save fails
-        navigate("/dashboard");
-      }
-    } catch (error) {
-      console.error("Error saving session:", error);
-      // Still navigate to dashboard even if save fails
-      navigate("/dashboard");
+    if (response.ok) {
+      const result = await response.json();
+      console.log("Session saved:", result);
+      
+      // Store answers and questions for the feedback screen
+      localStorage.setItem("interviewAnswers", JSON.stringify(answers));
+      localStorage.setItem("lastInterviewSession", JSON.stringify(sessionData));
+      
+      // Navigate to feedback screen instead of dashboard
+      navigate("/feedback");
+    } else {
+      console.error("Failed to save session");
+      // Still navigate to feedback screen even if save fails
+      navigate("/feedback");
     }
-  };
+  } catch (error) {
+    console.error("Error saving session:", error);
+    // Still navigate to feedback screen even if save fails
+    navigate("/feedback");
+  }
+};
 
   // Loading state
   if (loading) {
