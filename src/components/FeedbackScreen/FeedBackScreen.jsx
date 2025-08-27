@@ -472,57 +472,6 @@ export default function FeedBackScreen() {
                       ))}
                     </ul>
                   </div>
-
-                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                    <h4 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-                      <Clock size={20} />
-                      Medium Priority
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="text-sm text-yellow-700 flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                        Practice time management during interviews
-                      </li>
-                      <li className="text-sm text-yellow-700 flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                        Work on providing more specific examples
-                      </li>
-                      <li className="text-sm text-yellow-700 flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                        Improve communication clarity
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Study Resources */}
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <BookOpen size={20} />
-                    Recommended Study Resources
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="font-medium text-gray-700 mb-2">Technical Skills</h5>
-                      <ul className="space-y-2 text-sm text-gray-600">
-                        <li>• Practice coding problems on LeetCode/HackerRank</li>
-                        <li>• Review system design fundamentals</li>
-                        <li>• Study data structures and algorithms</li>
-                        <li>• Build projects to demonstrate skills</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium text-gray-700 mb-2">Interview Skills</h5>
-                      <ul className="space-y-2 text-sm text-gray-600">
-                        <li>• Practice the STAR method for behavioral questions</li>
-                        <li>• Record yourself answering questions</li>
-                        <li>• Research the company and role thoroughly</li>
-                        <li>• Prepare thoughtful questions to ask interviewers</li>
-                      </ul>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Action Items */}
