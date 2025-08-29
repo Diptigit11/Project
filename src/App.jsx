@@ -12,6 +12,8 @@ import Profile from './components/Profile';
 import InterviewScreen from './components/interviewscreen/InterviewScreen';
 import Dashboard from './components/dashboard/Dashboard';
 import FeedBackScreen from './components/FeedbackScreen/FeedbackScreen';
+import ResumeUpload from './components/resumeanalyser/ResumeUpload';
+import ResultPage from './components/resumeanalyser/ResultPage';
 
 function Approutes() {
   return (
@@ -28,8 +30,9 @@ function Approutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile/>} />
         <Route path="/interviewscreen" element={<InterviewScreen/>} />
-                <Route path="/dashboard" element={<Dashboard/>} />
-
+        <Route path="/dashboard" element={<Dashboard/>} />
+<Route path="/resume-analyzer" element={<ResumeUpload/>} />
+        <Route path="/resume-result" element={<ResultPage />} />
 
       </Routes>
       <Footer />
