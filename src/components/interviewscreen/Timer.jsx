@@ -20,8 +20,8 @@ export default function Timer({ perQuestionSeconds, onTimeUp }) {
   }, [timeLeft, onTimeUp]);
 
   const format = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
+    const m = Math.floor(s / 200);
+    const sec = s % 200;
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 

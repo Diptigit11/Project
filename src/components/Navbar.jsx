@@ -53,7 +53,7 @@ export default function Navbar() {
               </li>
               <li>
                 <Link
-                  to="/analyzer"
+                  to="/resume-analyzer"
                   className={`relative px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/10 ${isActive("/analyzer")
                       ? "text-yellow-400 bg-white/10"
                       : "hover:text-yellow-300"
