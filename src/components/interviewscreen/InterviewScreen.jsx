@@ -55,23 +55,27 @@ export default function InterviewScreen() {
     }
   }, [currentIndex, currentQuestion]);
 
-  const saveAudioForCurrent = (audioURL) => {
-    setAnswers((prev) => {
-      const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
-      if (idx !== -1) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], audioURL, recordedAt: new Date().toISOString() };
-        return copy;
-      }
-      return [...prev, { 
-        questionId: currentQuestion.id, 
-        questionText: currentQuestion.text,
-        questionType: currentQuestion.type,
-        audioURL, 
+const saveAudioForCurrent = (transcriptData) => {
+  setAnswers((prev) => {
+    const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
+    if (idx !== -1) {
+      const copy = [...prev];
+      copy[idx] = { 
+        ...copy[idx], 
+        transcription: transcriptData,  // Save transcript instead of audioURL
         recordedAt: new Date().toISOString() 
-      }];
-    });
-  };
+      };
+      return copy;
+    }
+    return [...prev, { 
+      questionId: currentQuestion.id, 
+      questionText: currentQuestion.text,
+      questionType: currentQuestion.type,
+      transcription: transcriptData,  // Save transcript instead of audioURL
+      recordedAt: new Date().toISOString() 
+    }];
+  });
+};
 
   const saveCodeForCurrent = (code) => {
     setAnswers((prev) => {
@@ -91,14 +95,14 @@ export default function InterviewScreen() {
     });
   };
 
-  const hasAnswer = () => {
-    const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
-    if (currentQuestion.coding) {
-      return existingAnswer && existingAnswer.code;
-    } else {
-      return existingAnswer && existingAnswer.audioURL;
-    }
-  };
+const hasAnswer = () => {
+  const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
+  if (currentQuestion.coding) {
+    return existingAnswer && existingAnswer.code;
+  } else {
+    return existingAnswer && existingAnswer.transcription;  // Check for transcription instead of audioURL
+  }
+};
 
   const handleNext = () => {
     if (!hasAnswer() && !timeUp) {
@@ -127,6 +131,8 @@ export default function InterviewScreen() {
   };
 const handleFinishInterview = async () => {
   try {
+        console.log("Sending answers to backend:", JSON.stringify(answers, null, 2));
+    
     // Save the interview session
     const sessionData = {
       metadata,

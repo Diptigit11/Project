@@ -1,137 +1,209 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
-  Trophy,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Code,
-  MessageSquare,
-  BookOpen,
-  Target,
-  Lightbulb,
-  BarChart3,
-  Loader2
+  TrendingUp,TrendingDown,CheckCircle,XCircle,Clock,Brain,MessageCircle,Code,BarChart3,Download,Home,RotateCcw,Loader2,Star,Target,Award,AlertCircle, FileText  
 } from "lucide-react";
 
-export default function FeedBackScreen() {
+export default function FeedbackScreen() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedTab, setSelectedTab] = useState("overview");
+  const [expandedQuestions, setExpandedQuestions] = useState(new Set());
 
   useEffect(() => {
     generateFeedback();
   }, []);
 
   const generateFeedback = async () => {
+    setLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
-      setError("");
+      // Get stored interview data
+      const answersData = localStorage.getItem("interviewAnswers");
+      const questionsData = localStorage.getItem("interviewQuestions");
+      const metadataData = localStorage.getItem("interviewMetadata");
 
-      // Get data from localStorage or passed state
-      const answers = JSON.parse(localStorage.getItem("interviewAnswers") || "[]");
-      const questions = JSON.parse(localStorage.getItem("interviewQuestions") || "[]");
-      const sessionData = JSON.parse(localStorage.getItem("interviewMetadata") || "{}");
-
-      if (!answers.length || !questions.length) {
+      if (!answersData || !questionsData) {
         setError("No interview data found. Please complete an interview first.");
-        setLoading(false);
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/generate-feedback", {
+      const answers = JSON.parse(answersData);
+      const questions = JSON.parse(questionsData);
+      const metadata = JSON.parse(metadataData || "{}");
+
+      // Call feedback generation API
+      const response = await fetch("http://localhost:5000/api/generate/feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sessionData,
           answers,
           questions,
+          metadata,
+          completionRate: (answers.filter(a => !a.skipped).length / questions.length) * 100
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate feedback");
+        throw new Error("Failed to generate feedback");
       }
 
-      const data = await response.json();
-      setFeedback(data.feedback);
+      const result = await response.json();
       
-      // Store feedback for future reference
-      localStorage.setItem("lastInterviewFeedback", JSON.stringify(data.feedback));
+      // Process and ensure all required fields exist
+      const processedFeedback = {
+        ...result.feedback,
+        overallGrade: result.feedback.overallGrade || calculateGrade(result.feedback.overallScore),
+        completionRate: result.feedback.completionRate || Math.round((answers.filter(a => !a.skipped).length / questions.length) * 100),
+        metrics: {
+          questionsAnswered: answers.filter(a => !a.skipped).length,
+          totalQuestions: questions.length,
+          averageCommunicationScore: result.feedback.metrics?.averageCommunicationScore || 0,
+          averageTechnicalScore: result.feedback.metrics?.averageTechnicalScore || null,
+          totalWordsSpoken: result.feedback.metrics?.totalWordsSpoken || 0,
+          averageWordsPerResponse: result.feedback.metrics?.averageWordsPerResponse || 0,
+          questionsWithTranscripts: result.feedback.metrics?.questionsWithTranscripts || 0,
+          ...result.feedback.metrics
+        },
+        overallStrengths: result.feedback.overallStrengths || [],
+        overallImprovements: result.feedback.overallImprovements || [],
+        recommendations: result.feedback.recommendations || [],
+        nextSteps: result.feedback.nextSteps || [],
+        questionFeedbacks: result.feedback.questionFeedbacks || [],
+        categoryPerformance: result.feedback.categoryPerformance || {},
+        communicationAnalysis: result.feedback.communicationAnalysis || null,
+        interviewMetadata: result.feedback.interviewMetadata || metadata || {}
+      };
+
+      setFeedback(processedFeedback);
+
+      // Save feedback for future reference
+      await saveFeedback(processedFeedback);
 
     } catch (error) {
       console.error("Error generating feedback:", error);
-      setError(error.message || "Failed to generate feedback. Please try again.");
+      setError("Failed to generate feedback. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper function to calculate grade from score
+  const calculateGrade = (score) => {
+    if (score >= 90) return 'A+';
+    if (score >= 85) return 'A';
+    if (score >= 80) return 'A-';
+    if (score >= 75) return 'B+';
+    if (score >= 70) return 'B';
+    if (score >= 65) return 'B-';
+    if (score >= 60) return 'C+';
+    if (score >= 55) return 'C';
+    if (score >= 50) return 'C-';
+    return 'D';
+  };
+
+  const saveFeedback = async (feedbackData) => {
+    try {
+      await fetch("http://localhost:5000/api/feedback/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          feedback: feedbackData,
+          sessionId: `session_${Date.now()}`
+        }),
+      });
+    } catch (error) {
+      console.error("Error saving feedback:", error);
+    }
+  };
+
+  const toggleQuestionExpansion = (questionId) => {
+    setExpandedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+  };
+
   const getScoreColor = (score) => {
-    if (score >= 90) return "text-green-600";
-    if (score >= 75) return "text-blue-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
+    if (score >= 85) return "text-green-600 bg-green-50";
+    if (score >= 70) return "text-blue-600 bg-blue-50";
+    if (score >= 60) return "text-yellow-600 bg-yellow-50";
+    return "text-red-600 bg-red-50";
   };
 
-  const getScoreBackground = (score) => {
-    if (score >= 90) return "bg-green-50 border-green-200";
-    if (score >= 75) return "bg-blue-50 border-blue-200";
-    if (score >= 60) return "bg-yellow-50 border-yellow-200";
-    return "bg-red-50 border-red-200";
+  const getGradeColor = (grade) => {
+    // Add null check
+    if (!grade || typeof grade !== 'string') return "text-gray-600 bg-gray-100";
+    
+    if (grade.startsWith('A')) return "text-green-600 bg-green-100";
+    if (grade.startsWith('B')) return "text-blue-600 bg-blue-100";
+    if (grade.startsWith('C')) return "text-yellow-600 bg-yellow-100";
+    return "text-red-600 bg-red-100";
   };
 
-  const getPerformanceLevel = (score) => {
-    if (score >= 90) return "Excellent";
-    if (score >= 75) return "Good";
-    if (score >= 60) return "Average";
-    return "Needs Improvement";
-  };
-
+  // Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          <Loader2 size={48} className="animate-spin text-[#012A4A] mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Interview</h2>
-          <p className="text-gray-600">
-            Our AI is reviewing your responses and generating personalized feedback...
-          </p>
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 text-[#012A4A] mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Analyzing Your Interview</h2>
+          <p className="text-gray-500">Generating detailed feedback using AI...</p>
+          <div className="mt-6 bg-white rounded-lg p-4 shadow-sm max-w-md">
+            <div className="text-sm text-gray-600 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Processing your responses
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                Analyzing technical skills
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                Generating recommendations
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error || !feedback) {
+  // Error State
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
-            <p className="text-red-600 mb-4">
-              {error || "No feedback data available."}
-            </p>
-            <div className="space-y-2">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Error</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="space-y-3">
               <button
-                onClick={() => navigate("/dashboard")}
-                className="w-full bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors"
+                onClick={generateFeedback}
+                className="w-full bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors flex items-center justify-center gap-2"
               >
-                Go to Dashboard
+                <RotateCcw size={16} />
+                Try Again
               </button>
               <button
                 onClick={() => navigate("/setup")}
-                className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
               >
-                Start New Interview
+                Take Another Interview
               </button>
             </div>
           </div>
@@ -140,391 +212,465 @@ export default function FeedBackScreen() {
     );
   }
 
+  if (!feedback) return null;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 pt-20 pb-12 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 text-[#012A4A] hover:text-[#024169] transition-colors"
-          >
-            <ArrowLeft size={20} />
-            Back to Dashboard
-          </button>
-          <h1 className="text-2xl font-bold text-[#012A4A]">Interview Feedback</h1>
-          <div className="w-20"></div> {/* Spacer for centering */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm mb-4">
+            <Award className="text-[#012A4A]" size={20} />
+            <span className="text-sm font-medium text-[#012A4A]">Interview Complete</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Your Performance Feedback</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Comprehensive AI-powered analysis of your interview performance with personalized recommendations.
+          </p>
         </div>
 
         {/* Overall Score Card */}
-        <div className={`rounded-xl border-2 p-6 mb-6 ${getScoreBackground(feedback.overallScore)}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-1">
-                Overall Performance: {getPerformanceLevel(feedback.overallScore)}
-              </h2>
-              <p className="text-gray-600">
-                You answered {feedback.answeredQuestions} out of {feedback.totalQuestions} questions
-              </p>
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-2xl font-bold ${getScoreColor(feedback.overallScore || 0)}`}>
+                {feedback.overallScore || 0}%
+              </div>
+              <p className="text-sm text-gray-600 mt-2">Overall Score</p>
             </div>
-            <div className="text-right">
-              <div className={`text-4xl font-bold ${getScoreColor(feedback.overallScore)}`}>
-                {feedback.overallScore}/100
+            
+            <div className="text-center">
+              <div className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-lg font-bold ${getGradeColor(feedback.overallGrade)}`}>
+                {feedback.overallGrade || 'N/A'}
               </div>
-              <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
-                <Trophy size={16} />
-                Score
+              <p className="text-sm text-gray-600 mt-2">Grade</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#012A4A]">
+                {feedback.completionRate || 0}%
               </div>
+              <p className="text-sm text-gray-600 mt-2">Completion Rate</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#012A4A]">
+                {feedback.metrics.questionsAnswered}/{feedback.metrics.totalQuestions}
+              </div>
+              <p className="text-sm text-gray-600 mt-2">Questions Answered</p>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle size={20} className="text-green-600" />
-              <span className="text-sm font-medium text-gray-600">Answered</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-800">{feedback.answeredQuestions}</div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={20} className="text-yellow-600" />
-              <span className="text-sm font-medium text-gray-600">Skipped</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-800">{feedback.skippedQuestions}</div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Code size={20} className="text-blue-600" />
-              <span className="text-sm font-medium text-gray-600">Coding</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-800">{feedback.codingQuestions}</div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <BarChart3 size={20} className="text-purple-600" />
-              <span className="text-sm font-medium text-gray-600">High Scores</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-800">
-              {feedback.scoreDistribution.excellent + feedback.scoreDistribution.good}
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              {[
-                { id: "overview", label: "Overview", icon: BarChart3 },
-                { id: "detailed", label: "Question by Question", icon: MessageSquare },
-                { id: "suggestions", label: "Improvement Plan", icon: Lightbulb },
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center gap-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === id
-                      ? "border-[#012A4A] text-[#012A4A]"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <Icon size={16} />
-                  {label}
-                </button>
-              ))}
-            </nav>
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-lg mb-8">
+          <div className="flex border-b border-gray-200">
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart3 },
+              { id: 'detailed', label: 'Question Analysis', icon: MessageCircle },
+              { id: 'recommendations', label: 'Recommendations', icon: Target }
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setSelectedTab(id)}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 text-sm font-medium transition-colors ${
+                  selectedTab === id
+                    ? 'text-[#012A4A] border-b-2 border-[#012A4A] bg-blue-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            ))}
           </div>
 
           <div className="p-6">
-            {activeTab === "overview" && (
+            {selectedTab === 'overview' && (
               <div className="space-y-6">
-                {/* Strengths and Improvements */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle size={20} className="text-green-600" />
-                      <h3 className="font-semibold text-green-800">Key Strengths</h3>
+                {/* Performance Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <MessageCircle className="text-blue-600" size={20} />
+                      <span className="font-medium">Communication</span>
                     </div>
-                    <ul className="space-y-2">
-                      {feedback.strengths.slice(0, 5).map((strength, index) => (
-                        <li key={index} className="text-sm text-green-700 flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                          {strength}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {feedback.metrics.averageCommunicationScore}%
+                    </div>
                   </div>
 
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <TrendingUp size={20} className="text-blue-600" />
-                      <h3 className="font-semibold text-blue-800">Areas for Improvement</h3>
+                  {feedback.metrics.averageTechnicalScore && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Code className="text-green-600" size={20} />
+                        <span className="font-medium">Technical Skills</span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-800">
+                        {feedback.metrics.averageTechnicalScore}%
+                      </div>
                     </div>
-                    <ul className="space-y-2">
-                      {feedback.improvements.slice(0, 5).map((improvement, index) => (
-                        <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          {improvement}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  )}
                 </div>
 
-                {/* Score Distribution */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <BarChart3 size={20} />
-                    Score Distribution
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600 mb-1">
-                        {feedback.scoreDistribution.excellent}
+                {/* Communication Analysis */}
+                {feedback.communicationAnalysis && feedback.communicationAnalysis.totalWordsSpoken > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Communication Analysis</h3>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-700">
+                            {feedback.communicationAnalysis.totalWordsSpoken}
+                          </div>
+                          <div className="text-sm text-blue-600">Total Words</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-700">
+                            {feedback.communicationAnalysis.averageWordsPerResponse}
+                          </div>
+                          <div className="text-sm text-blue-600">Avg per Response</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-700 capitalize">
+                            {feedback.communicationAnalysis.communicationPatterns?.brevity || 'N/A'}
+                          </div>
+                          <div className="text-sm text-blue-600">Response Style</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-700 capitalize">
+                            {feedback.communicationAnalysis.communicationPatterns?.technicalLanguageUse || 'N/A'}
+                          </div>
+                          <div className="text-sm text-blue-600">Tech Language Use</div>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Excellent (90+)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600 mb-1">
-                        {feedback.scoreDistribution.good}
-                      </div>
-                      <div className="text-sm text-gray-600">Good (75-89)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-yellow-600 mb-1">
-                        {feedback.scoreDistribution.average}
-                      </div>
-                      <div className="text-sm text-gray-600">Average (60-74)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600 mb-1">
-                        {feedback.scoreDistribution.needsImprovement}
-                      </div>
-                      <div className="text-sm text-gray-600">Needs Work (60)</div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Strong and Weak Areas */}
+                {/* Category Performance */}
+                {Object.keys(feedback.categoryPerformance).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance by Category</h3>
+                    <div className="space-y-4">
+                      {Object.entries(feedback.categoryPerformance).map(([category, performance]) => (
+                        <div key={category} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium capitalize">{category.replace('-', ' ')}</span>
+                            <span className={`px-2 py-1 rounded text-sm font-medium ${getScoreColor(performance.averageScore)}`}>
+                              {performance.averageScore}%
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div>
+                              {performance.questionsAnswered}/{performance.totalQuestions} questions completed 
+                              ({performance.completionRate}% completion rate)
+                            </div>
+                            {performance.transcriptAvailable > 0 && (
+                              <div className="text-blue-600">
+                                {performance.transcriptAvailable} responses transcribed
+                                {performance.averageWordsSpoken > 0 && ` • Avg ${performance.averageWordsSpoken} words spoken`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Strengths and Improvements */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <Target size={20} className="text-green-600" />
-                      Strong Areas
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <TrendingUp className="text-green-600" size={20} />
+                      Key Strengths
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {feedback.strongAreas.map((area, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium capitalize"
-                        >
-                          {area}
-                        </span>
-                      ))}
+                    <div className="space-y-2">
+                      {feedback.overallStrengths.length > 0 ? feedback.overallStrengths.map((strength, index) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
+                          <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={16} />
+                          <span className="text-sm text-green-800">{strength}</span>
+                        </div>
+                      )) : (
+                        <div className="text-sm text-gray-500 italic">No specific strengths identified</div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <AlertCircle size={20} className="text-orange-600" />
-                      Focus Areas
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <TrendingDown className="text-orange-600" size={20} />
+                      Areas for Improvement
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {feedback.weakAreas.map((area, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium capitalize"
-                        >
-                          {area}
-                        </span>
-                      ))}
+                    <div className="space-y-2">
+                      {feedback.overallImprovements.length > 0 ? feedback.overallImprovements.map((improvement, index) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg">
+                          <AlertCircle className="text-orange-600 flex-shrink-0 mt-0.5" size={16} />
+                          <span className="text-sm text-orange-800">{improvement}</span>
+                        </div>
+                      )) : (
+                        <div className="text-sm text-gray-500 italic">No specific improvements identified</div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === "detailed" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Question-by-Question Analysis</h3>
-                {feedback.detailedFeedback.map((questionFeedback, index) => (
-                  <div key={questionFeedback.questionId} className="border border-gray-200 rounded-lg p-6 bg-white">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="bg-[#012A4A] text-white text-xs font-semibold px-2 py-1 rounded">
-                            Q{index + 1}
+            {selectedTab === 'detailed' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Question-by-Question Analysis</h3>
+                {feedback.questionFeedbacks.length > 0 ? feedback.questionFeedbacks.map((questionFeedback, index) => (
+                  <div key={questionFeedback.questionId || index} className="border rounded-lg overflow-hidden">
+                    <div 
+                      className="p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => toggleQuestionExpansion(questionFeedback.questionId || index)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-gray-600">Q{index + 1}</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(questionFeedback.score || 0)}`}>
+                            {questionFeedback.score || 0}%
                           </span>
-                          <span className="text-xs text-gray-500 capitalize">
-                            {questionFeedback.questionType} • {questionFeedback.difficulty}
+                          <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded capitalize">
+                            {questionFeedback.questionType || 'general'}
                           </span>
-                          {questionFeedback.coding && (
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              Coding
+                          {questionFeedback.hasTranscript && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
+                              <MessageCircle size={12} />
+                              Transcript Available
                             </span>
                           )}
+                          {!questionFeedback.wasAnswered && (
+                            <XCircle className="text-red-500" size={16} />
+                          )}
                         </div>
-                        <p className="text-gray-800 font-medium mb-2">{questionFeedback.questionText}</p>
+                        <div className="text-sm text-gray-500">
+                          {expandedQuestions.has(questionFeedback.questionId || index) ? '−' : '+'}
+                        </div>
                       </div>
-                      <div className={`text-right ml-4 ${getScoreBackground(questionFeedback.score)} rounded-lg px-3 py-2`}>
-                        <div className={`text-2xl font-bold ${getScoreColor(questionFeedback.score)}`}>
-                          {questionFeedback.score}
-                        </div>
-                        <div className="text-xs text-gray-600">Score</div>
-                      </div>
+                      <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                        {questionFeedback.questionText || 'Question text not available'}
+                      </p>
                     </div>
+                    
+                    {expandedQuestions.has(questionFeedback.questionId || index) && (
+                      <div className="p-4 border-t bg-white">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="font-medium text-gray-800 mb-2">Question</h4>
+                            <p className="text-sm text-gray-600">{questionFeedback.questionText}</p>
+                          </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                      <h4 className="font-medium text-gray-800 mb-2">Assessment</h4>
-                      <p className="text-sm text-gray-700">{questionFeedback.assessment}</p>
-                    </div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium">Score:</span> {questionFeedback.score || 0}%
+                            </div>
+                            <div>
+                              <span className="font-medium">Difficulty:</span> {questionFeedback.difficulty || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Status:</span> {questionFeedback.wasAnswered ? 'Answered' : 'Skipped'}
+                            </div>
+                            {questionFeedback.transcriptWordCount > 0 && (
+                              <div>
+                                <span className="font-medium">Words Spoken:</span> {questionFeedback.transcriptWordCount}
+                              </div>
+                            )}
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {questionFeedback.strengths.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-green-800 mb-2 flex items-center gap-1">
-                            <CheckCircle size={16} />
-                            Strengths
-                          </h4>
-                          <ul className="space-y-1">
-                            {questionFeedback.strengths.map((strength, idx) => (
-                              <li key={idx} className="text-sm text-green-700 flex items-start gap-2">
-                                <div className="w-1 h-1 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                                {strength}
-                              </li>
-                            ))}
-                          </ul>
+                          {/* Show transcript if available */}
+                          {questionFeedback.hasTranscript && questionFeedback.transcription && (
+                            <div>
+                              <h4 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
+                                <MessageCircle size={16} />
+                                Your Response (Transcribed)
+                              </h4>
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-sm text-blue-800 italic">
+                                  "{questionFeedback.transcription.text || 'Transcription not available'}"
+                                </p>
+                                <div className="mt-2 text-xs text-blue-600">
+                                  Words: {questionFeedback.transcription.text ? questionFeedback.transcription.text.split(/\s+/).length : 0} • 
+                                  Confidence: {Math.round((questionFeedback.transcription.confidence || 0) * 100)}%
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {questionFeedback.detailedFeedback && (
+                            <div>
+                              <h4 className="font-medium text-gray-800 mb-2">Detailed Feedback</h4>
+                              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                                {questionFeedback.detailedFeedback}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {questionFeedback.strengths && questionFeedback.strengths.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-green-700 mb-2">Strengths</h4>
+                                <ul className="space-y-1">
+                                  {questionFeedback.strengths.map((strength, i) => (
+                                    <li key={i} className="text-sm text-green-600 flex items-start gap-2">
+                                      <CheckCircle size={12} className="flex-shrink-0 mt-1" />
+                                      {strength}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {questionFeedback.improvements && questionFeedback.improvements.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-orange-700 mb-2">Areas to Improve</h4>
+                                <ul className="space-y-1">
+                                  {questionFeedback.improvements.map((improvement, i) => (
+                                    <li key={i} className="text-sm text-orange-600 flex items-start gap-2">
+                                      <AlertCircle size={12} className="flex-shrink-0 mt-1" />
+                                      {improvement}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Communication Scores */}
+                          {questionFeedback.communicationScore && (
+                            <div className="bg-slate-50 rounded-lg p-3">
+                              <h4 className="font-medium text-slate-700 mb-2">Performance Scores</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                <div>
+                                  <div className="text-slate-600">Communication</div>
+                                  <div className={`font-bold ${getScoreColor(questionFeedback.communicationScore)}`}>
+                                    {questionFeedback.communicationScore}%
+                                  </div>
+                                </div>
+                                {questionFeedback.technicalScore && (
+                                  <div>
+                                    <div className="text-slate-600">Technical</div>
+                                    <div className={`font-bold ${getScoreColor(questionFeedback.technicalScore)}`}>
+                                      {questionFeedback.technicalScore}%
+                                    </div>
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="text-slate-600">Completeness</div>
+                                  <div className={`font-bold ${getScoreColor(questionFeedback.completeness || 0)}`}>
+                                    {questionFeedback.completeness || 0}%
+                                  </div>
+                                </div>
+                                {questionFeedback.clarity && (
+                                  <div>
+                                    <div className="text-slate-600">Clarity</div>
+                                    <div className={`font-bold ${getScoreColor(questionFeedback.clarity)}`}>
+                                      {questionFeedback.clarity}%
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {questionFeedback.improvements.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-1">
-                            <TrendingUp size={16} />
-                            Improvements
-                          </h4>
-                          <ul className="space-y-1">
-                            {questionFeedback.improvements.map((improvement, idx) => (
-                              <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
-                                <div className="w-1 h-1 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                                {improvement}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-
-                    {questionFeedback.suggestions.length > 0 && (
-                      <div className="mt-4 bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                        <h4 className="font-medium text-yellow-800 mb-2 flex items-center gap-1">
-                          <Lightbulb size={16} />
-                          Suggestions
-                        </h4>
-                        <ul className="space-y-1">
-                          {questionFeedback.suggestions.map((suggestion, idx) => (
-                            <li key={idx} className="text-sm text-yellow-700 flex items-start gap-2">
-                              <div className="w-1 h-1 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                              {suggestion}
-                            </li>
-                          ))}
-                        </ul>
                       </div>
                     )}
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <MessageCircle className="mx-auto mb-2" size={48} />
+                    <p>No detailed question feedback available</p>
+                  </div>
+                )}
               </div>
             )}
 
-            {activeTab === "suggestions" && (
+            {selectedTab === 'recommendations' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <BookOpen size={20} />
-                  Your Personalized Improvement Plan
-                </h3>
-
-                <div className="bg-gradient-to-r from-[#012A4A] to-[#013A5A] rounded-lg p-6 text-white mb-6">
-                  <h4 className="text-xl font-semibold mb-2">Next Steps</h4>
-                  <p className="text-blue-100">
-                    Based on your performance, here's what you should focus on to improve your interview skills.
-                  </p>
-                </div>
-
-                {/* Priority Areas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                    <h4 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
-                      <AlertCircle size={20} />
-                      High Priority
-                    </h4>
-                    <ul className="space-y-2">
-                      {feedback.weakAreas.slice(0, 3).map((area, index) => (
-                        <li key={index} className="text-sm text-red-700 flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                          Study {area} concepts and practice related questions
-                        </li>
-                      ))}
-                    </ul>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Target className="text-[#012A4A]" size={20} />
+                    Actionable Recommendations
+                  </h3>
+                  <div className="space-y-3">
+                    {feedback.recommendations.length > 0 ? feedback.recommendations.map((recommendation, index) => (
+                      <div key={index} className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                        <div className="bg-[#012A4A] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm text-blue-800">{recommendation}</span>
+                      </div>
+                    )) : (
+                      <div className="text-sm text-gray-500 italic">No specific recommendations available</div>
+                    )}
                   </div>
                 </div>
 
-                {/* Action Items */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                    <Target size={20} />
-                    Action Items for This Week
-                  </h4>
-                  <div className="space-y-2">
-                    <label className="flex items-start gap-3 text-sm text-blue-700">
-                      <input type="checkbox" className="mt-1" />
-                      <span>Complete 5 practice problems in your weakest technical area</span>
-                    </label>
-                    <label className="flex items-start gap-3 text-sm text-blue-700">
-                      <input type="checkbox" className="mt-1" />
-                      <span>Practice explaining technical concepts out loud for 15 minutes daily</span>
-                    </label>
-                    <label className="flex items-start gap-3 text-sm text-blue-700">
-                      <input type="checkbox" className="mt-1" />
-                      <span>Research 3 companies you're interested in and their interview processes</span>
-                    </label>
-                    <label className="flex items-start gap-3 text-sm text-blue-700">
-                      <input type="checkbox" className="mt-1" />
-                      <span>Take another mock interview to track improvement</span>
-                    </label>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Star className="text-yellow-500" size={20} />
+                    Next Steps
+                  </h3>
+                  <div className="space-y-3">
+                    {feedback.nextSteps.length > 0 ? feedback.nextSteps.map((step, index) => (
+                      <div key={index} className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+                        <div className="bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm text-yellow-800">{step}</span>
+                      </div>
+                    )) : (
+                      <div className="text-sm text-gray-500 italic">No specific next steps available</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-800 mb-3">Interview Details</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Role:</span>
+                      <div className="font-medium">{feedback.interviewMetadata.role || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Company:</span>
+                      <div className="font-medium">{feedback.interviewMetadata.company || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Type:</span>
+                      <div className="font-medium capitalize">{feedback.interviewMetadata.interviewType || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Difficulty:</span>
+                      <div className="font-medium capitalize">{feedback.interviewMetadata.difficulty || 'N/A'}</div>
+                    </div>
+                    {feedback.interviewMetadata.includedCoding && (
+                      <div>
+                        <span className="text-gray-600">Language:</span>
+                        <div className="font-medium">{feedback.interviewMetadata.language || 'N/A'}</div>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-600">Generated:</span>
+                      <div className="font-medium">
+                        {feedback.generatedAt ? new Date(feedback.generatedAt).toLocaleDateString() : new Date().toLocaleDateString()}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-6">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => navigate("/setup")}
-            className="flex-1 bg-[#012A4A] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[#024169] transition-colors flex items-center justify-center gap-2"
+            onClick={() => navigate("/interview")}
+            className="flex items-center justify-center gap-2 bg-[#012A4A] text-white px-6 py-3 rounded-lg hover:bg-[#024169] transition-colors font-medium"
           >
-            <MessageSquare size={20} />
+            <RotateCcw size={18} />
             Take Another Interview
-          </button>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <BarChart3 size={20} />
-            View Dashboard
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-          >
-            Print Report
           </button>
         </div>
       </div>
