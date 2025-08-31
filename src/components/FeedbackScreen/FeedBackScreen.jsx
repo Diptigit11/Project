@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   TrendingUp,TrendingDown,CheckCircle,XCircle,Clock,Brain,MessageCircle,Code,BarChart3,Download,Home,RotateCcw,Loader2,Star,Target,Award,AlertCircle, FileText  
 } from "lucide-react";
 
 export default function FeedbackScreen() {
   const navigate = useNavigate();
+  const { sessionId: urlSessionId } = useParams(); // Get session ID from URL if available
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -13,18 +14,119 @@ export default function FeedbackScreen() {
   const [expandedQuestions, setExpandedQuestions] = useState(new Set());
 
   useEffect(() => {
-    generateFeedback();
+    fetchFeedbackFromDatabase();
   }, []);
 
-  const generateFeedback = async () => {
+  const fetchFeedbackFromDatabase = async () => {
     setLoading(true);
     setError("");
 
     try {
+      // Try multiple sources for session ID
+      const sessionId = urlSessionId || 
+                       localStorage.getItem("currentSessionId") || 
+                       localStorage.getItem("lastSessionId");
+      
+      if (!sessionId) {
+        // Fallback to old method if no session ID
+        console.log("No session ID found, trying fallback method...");
+        await generateFeedbackFallback();
+        return;
+      }
+
+      // Get auth token
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required. Please log in.");
+        return;
+      }
+
+      console.log("Fetching feedback for session:", sessionId);
+
+      // Fetch feedback from database using session ID
+      const response = await fetch(`http://localhost:5000/api/feedback/session/${sessionId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          setError("Session expired. Please log in again.");
+          return;
+        }
+        
+        if (response.status === 404) {
+          setError("Feedback not found. The feedback may still be generating. Please try again in a moment.");
+          return;
+        }
+        
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch feedback");
+      }
+
+      const result = await response.json();
+      console.log("Feedback fetched from database:", result);
+      
+      // Process and ensure all required fields exist
+      const processedFeedback = {
+        ...result.feedback,
+        overallGrade: result.feedback.overallGrade || calculateGrade(result.feedback.overallScore),
+        completionRate: result.feedback.completionRate || 0,
+        metrics: {
+          questionsAnswered: result.feedback.metrics?.questionsAnswered || 0,
+          totalQuestions: result.feedback.metrics?.totalQuestions || 0,
+          averageCommunicationScore: result.feedback.metrics?.averageCommunicationScore || 0,
+          averageTechnicalScore: result.feedback.metrics?.averageTechnicalScore || null,
+          totalWordsSpoken: result.feedback.metrics?.totalWordsSpoken || 0,
+          averageWordsPerResponse: result.feedback.metrics?.averageWordsPerResponse || 0,
+          questionsWithTranscripts: result.feedback.metrics?.questionsWithTranscripts || 0,
+          codingQuestionsAttempted: result.feedback.metrics?.codingQuestionsAttempted || 0,
+          totalCodeLength: result.feedback.metrics?.totalCodeLength || 0,
+          ...result.feedback.metrics
+        },
+        overallStrengths: result.feedback.overallStrengths || [],
+        overallImprovements: result.feedback.overallImprovements || [],
+        recommendations: result.feedback.recommendations || [],
+        nextSteps: result.feedback.nextSteps || [],
+        questionFeedbacks: result.feedback.questionFeedbacks || [],
+        categoryPerformance: result.feedback.categoryPerformance || {},
+        communicationAnalysis: result.feedback.communicationAnalysis || null,
+        interviewMetadata: result.feedback.interviewMetadata || {}
+      };
+
+      setFeedback(processedFeedback);
+
+      // Store session ID for future reference
+      if (sessionId) {
+        localStorage.setItem("lastSessionId", sessionId);
+      }
+
+    } catch (error) {
+      console.error("Error fetching feedback from database:", error);
+      if (error.message.includes("Authentication")) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(error.message || "Failed to fetch feedback. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fallback method for backward compatibility (if no session ID)
+  const generateFeedbackFallback = async () => {
+    try {
+      console.log("Using fallback method to generate feedback...");
+      
       // Get stored interview data
       const answersData = localStorage.getItem("interviewAnswers");
       const questionsData = localStorage.getItem("interviewQuestions");
       const metadataData = localStorage.getItem("interviewMetadata");
+      const sessionData = localStorage.getItem("sessionData");
 
       if (!answersData || !questionsData) {
         setError("No interview data found. Please complete an interview first.");
@@ -34,14 +136,24 @@ export default function FeedbackScreen() {
       const answers = JSON.parse(answersData);
       const questions = JSON.parse(questionsData);
       const metadata = JSON.parse(metadataData || "{}");
+      const session = JSON.parse(sessionData || "{}");
 
-      // Call feedback generation API
+      // Get auth token
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required. Please log in.");
+        return;
+      }
+
+      // Generate feedback (this will save to database)
       const response = await fetch("http://localhost:5000/api/generate/feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
+          sessionData: session,
           answers,
           questions,
           metadata,
@@ -50,25 +162,27 @@ export default function FeedbackScreen() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate feedback");
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || "Failed to generate feedback");
       }
 
       const result = await response.json();
       
-      // Process and ensure all required fields exist
+      // Process the feedback
       const processedFeedback = {
         ...result.feedback,
         overallGrade: result.feedback.overallGrade || calculateGrade(result.feedback.overallScore),
         completionRate: result.feedback.completionRate || Math.round((answers.filter(a => !a.skipped).length / questions.length) * 100),
         metrics: {
-          questionsAnswered: answers.filter(a => !a.skipped).length,
-          totalQuestions: questions.length,
+          questionsAnswered: result.feedback.metrics?.questionsAnswered || answers.filter(a => !a.skipped).length,
+          totalQuestions: result.feedback.metrics?.totalQuestions || questions.length,
           averageCommunicationScore: result.feedback.metrics?.averageCommunicationScore || 0,
           averageTechnicalScore: result.feedback.metrics?.averageTechnicalScore || null,
           totalWordsSpoken: result.feedback.metrics?.totalWordsSpoken || 0,
           averageWordsPerResponse: result.feedback.metrics?.averageWordsPerResponse || 0,
           questionsWithTranscripts: result.feedback.metrics?.questionsWithTranscripts || 0,
-          ...result.feedback.metrics
+          codingQuestionsAttempted: result.feedback.metrics?.codingQuestionsAttempted || 0,
+          totalCodeLength: result.feedback.metrics?.totalCodeLength || 0
         },
         overallStrengths: result.feedback.overallStrengths || [],
         overallImprovements: result.feedback.overallImprovements || [],
@@ -82,14 +196,13 @@ export default function FeedbackScreen() {
 
       setFeedback(processedFeedback);
 
-      // Save feedback for future reference
-      await saveFeedback(processedFeedback);
-
     } catch (error) {
-      console.error("Error generating feedback:", error);
-      setError("Failed to generate feedback. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Error in fallback feedback generation:", error);
+      if (error.message.includes("Authentication")) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(error.message || "Failed to generate feedback. Please try again.");
+      }
     }
   };
 
@@ -105,23 +218,6 @@ export default function FeedbackScreen() {
     if (score >= 55) return 'C';
     if (score >= 50) return 'C-';
     return 'D';
-  };
-
-  const saveFeedback = async (feedbackData) => {
-    try {
-      await fetch("http://localhost:5000/api/feedback/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          feedback: feedbackData,
-          sessionId: `session_${Date.now()}`
-        }),
-      });
-    } catch (error) {
-      console.error("Error saving feedback:", error);
-    }
   };
 
   const toggleQuestionExpansion = (questionId) => {
@@ -153,27 +249,46 @@ export default function FeedbackScreen() {
     return "text-red-600 bg-red-100";
   };
 
+  // Helper function to check if code exists and should be displayed
+  const hasValidCode = (questionFeedback) => {
+    return questionFeedback.coding && 
+           questionFeedback.code && 
+           questionFeedback.code.trim() !== "" &&
+           questionFeedback.code !== "No code submitted" &&
+           questionFeedback.code !== "null";
+  };
+
+  // Error handling for authentication
+  const handleRetry = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+    } else {
+      fetchFeedbackFromDatabase();
+    }
+  };
+
   // Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin h-12 w-12 text-[#012A4A] mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Analyzing Your Interview</h2>
-          <p className="text-gray-500">Generating detailed feedback using AI...</p>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Loading Your Feedback</h2>
+          <p className="text-gray-500">Retrieving your interview analysis from database...</p>
           <div className="mt-6 bg-white rounded-lg p-4 shadow-sm max-w-md">
             <div className="text-sm text-gray-600 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Processing your responses
+                Fetching feedback data
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                Analyzing technical skills
+                Loading performance metrics
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                Generating recommendations
+                Preparing analysis display
               </div>
             </div>
           </div>
@@ -193,11 +308,11 @@ export default function FeedbackScreen() {
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="space-y-3">
               <button
-                onClick={generateFeedback}
+                onClick={handleRetry}
                 className="w-full bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors flex items-center justify-center gap-2"
               >
                 <RotateCcw size={16} />
-                Try Again
+                {error.includes("Authentication") || error.includes("log in") ? "Login Again" : "Try Again"}
               </button>
               <button
                 onClick={() => navigate("/setup")}
@@ -288,7 +403,7 @@ export default function FeedbackScreen() {
           <div className="p-6">
             {selectedTab === 'overview' && (
               <div className="space-y-6">
-                {/* Performance Metrics */}
+                {/* Enhanced Performance Metrics - Include Coding Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-2">
@@ -296,11 +411,11 @@ export default function FeedbackScreen() {
                       <span className="font-medium">Communication</span>
                     </div>
                     <div className="text-2xl font-bold text-gray-800">
-                      {feedback.metrics.averageCommunicationScore}%
+                      {feedback.metrics.averageCommunicationScore || 0}%
                     </div>
                   </div>
 
-                  {feedback.metrics.averageTechnicalScore && (
+                  {feedback.metrics.averageTechnicalScore  != null && (
                     <div className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center gap-3 mb-2">
                         <Code className="text-green-600" size={20} />
@@ -308,6 +423,38 @@ export default function FeedbackScreen() {
                       </div>
                       <div className="text-2xl font-bold text-gray-800">
                         {feedback.metrics.averageTechnicalScore}%
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show coding metrics if available */}
+                  {feedback.metrics.codingQuestionsAttempted > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Code className="text-purple-600" size={20} />
+                        <span className="font-medium">Coding Questions</span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-800">
+                        {feedback.metrics.codingQuestionsAttempted}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Attempted
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show words spoken for voice questions */}
+                  {feedback.metrics.questionsWithTranscripts > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <MessageCircle className="text-indigo-600" size={20} />
+                        <span className="font-medium">Voice Questions</span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-800">
+                        {feedback.metrics.questionsWithTranscripts}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        With Transcripts
                       </div>
                     </div>
                   )}
@@ -372,6 +519,12 @@ export default function FeedbackScreen() {
                                 {performance.averageWordsSpoken > 0 && ` • Avg ${performance.averageWordsSpoken} words spoken`}
                               </div>
                             )}
+                            {performance.codeSubmissions > 0 && (
+                              <div className="text-green-600">
+                                {performance.codeSubmissions} code submissions
+                                {performance.averageCodeLength > 0 && ` • Avg ${performance.averageCodeLength} characters`}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -428,7 +581,7 @@ export default function FeedbackScreen() {
                       onClick={() => toggleQuestionExpansion(questionFeedback.questionId || index)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <span className="text-sm font-medium text-gray-600">Q{index + 1}</span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(questionFeedback.score || 0)}`}>
                             {questionFeedback.score || 0}%
@@ -436,14 +589,27 @@ export default function FeedbackScreen() {
                           <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded capitalize">
                             {questionFeedback.questionType || 'general'}
                           </span>
-                          {questionFeedback.hasTranscript && (
+                          
+                          {/* Show badges only for positive cases */}
+                          {questionFeedback.coding && hasValidCode(questionFeedback) && (
                             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
-                              <MessageCircle size={12} />
-                              Transcript Available
+                              <Code size={12} />
+                              Code ({questionFeedback.codeLength || questionFeedback.code?.length || 0} chars)
                             </span>
                           )}
+                          
+                          {!questionFeedback.coding && questionFeedback.hasTranscript && questionFeedback.transcription?.text && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                              <MessageCircle size={12} />
+                              Transcript ({questionFeedback.transcriptWordCount || 0} words)
+                            </span>
+                          )}
+                          
                           {!questionFeedback.wasAnswered && (
-                            <XCircle className="text-red-500" size={16} />
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded flex items-center gap-1">
+                              <XCircle size={12} />
+                              Skipped
+                            </span>
                           )}
                         </div>
                         <div className="text-sm text-gray-500">
@@ -478,10 +644,15 @@ export default function FeedbackScreen() {
                                 <span className="font-medium">Words Spoken:</span> {questionFeedback.transcriptWordCount}
                               </div>
                             )}
+                            {questionFeedback.coding && questionFeedback.codeLength > 0 && (
+                              <div>
+                                <span className="font-medium">Code Length:</span> {questionFeedback.codeLength} characters
+                              </div>
+                            )}
                           </div>
 
                           {/* Show transcript if available */}
-                          {questionFeedback.hasTranscript && questionFeedback.transcription && (
+                          {questionFeedback.hasTranscript && questionFeedback.transcription && questionFeedback.transcription.text && (
                             <div>
                               <h4 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
                                 <MessageCircle size={16} />
@@ -489,12 +660,30 @@ export default function FeedbackScreen() {
                               </h4>
                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                                 <p className="text-sm text-blue-800 italic">
-                                  "{questionFeedback.transcription.text || 'Transcription not available'}"
+                                  "{questionFeedback.transcription.text}"
                                 </p>
                                 <div className="mt-2 text-xs text-blue-600">
-                                  Words: {questionFeedback.transcription.text ? questionFeedback.transcription.text.split(/\s+/).length : 0} • 
+                                  Words: {questionFeedback.transcription.text.split(/\s+/).length} • 
                                   Confidence: {Math.round((questionFeedback.transcription.confidence || 0) * 100)}%
                                 </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* FIXED: Only show code section if there's valid code */}
+                          {hasValidCode(questionFeedback) && (
+                            <div>
+                              <h4 className="font-medium text-green-700 mb-2 flex items-center gap-2">
+                                <Code size={16} />
+                                Your Code Solution
+                              </h4>
+                              <div className="bg-gray-900 text-green-400 rounded-lg p-3 overflow-x-auto">
+                                <pre className="text-sm">
+                                  <code>{questionFeedback.code}</code>
+                                </pre>
+                              </div>
+                              <div className="mt-2 text-xs text-green-600">
+                                Code length: {questionFeedback.codeLength || questionFeedback.code.length} characters
                               </div>
                             </div>
                           )}
@@ -632,7 +821,7 @@ export default function FeedbackScreen() {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Role:</span>
-                      <div className="font-medium">{feedback.interviewMetadata.role || 'N/A'}</div>
+                      <div className="font-medium">{feedback.interviewMetadata.role || feedback.interviewMetadata.jobRole || 'N/A'}</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Company:</span>
@@ -664,13 +853,24 @@ export default function FeedbackScreen() {
             )}
           </div>
         </div>
+        
+        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => navigate("/interview")}
+            onClick={() => navigate("/setup")}
             className="flex items-center justify-center gap-2 bg-[#012A4A] text-white px-6 py-3 rounded-lg hover:bg-[#024169] transition-colors font-medium"
           >
             <RotateCcw size={18} />
             Take Another Interview
+          </button>
+          
+          {/* Optional: Add button to view feedback history */}
+          <button
+            onClick={() => navigate("/feedback-history")}
+            className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+          >
+            <FileText size={18} />
+            View History
           </button>
         </div>
       </div>

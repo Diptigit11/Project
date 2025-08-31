@@ -1,44 +1,52 @@
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
-import { auth, db } from "./firebase";
-import { setDoc, doc } from "firebase/firestore";
-import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
 function Register() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [fname, setFname] = useState("");
   const [lname, setLname] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCred.user;
-
-      await setDoc(doc(db, "Users", user.uid), {
-        email: user.email,
-        firstName: fname,
-        lastName: lname,
-        photo: ""
+      const res = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: fname,
+          lastName: lname,
+          email,
+          password,
+        }),
       });
 
-      toast.success("User registered successfully!", {
-        position: "top-center",
-      });
+      const data = await res.json();
 
-      navigate("/profile");
-    } catch (error) {
-      toast.error(error.message, {
-        position: "bottom-center",
-      });
+      if (!res.ok) {
+        setError(data.message || "Registration failed");
+        return;
+      }
+
+      // ✅ Store token to log in immediately
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      // ✅ Optionally store user info if needed
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect to interview page (or wherever)
+      navigate("/");
+    } catch (err) {
+      setError("Something went wrong");
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen  font-sans">
+    <div className="flex items-center justify-center min-h-screen font-sans">
       <form
         onSubmit={handleRegister}
         className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border-t-4 border-yellow-400"
@@ -47,12 +55,17 @@ function Register() {
           Create an Account
         </h3>
 
+        {error && (
+          <p className="text-red-500 text-center mb-4 font-medium">{error}</p>
+        )}
+
         <div className="mb-4">
           <label className="block text-gray-700 mb-1">First name</label>
           <input
             type="text"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
             placeholder="First name"
+            value={fname}
             onChange={(e) => setFname(e.target.value)}
             required
           />
@@ -64,6 +77,7 @@ function Register() {
             type="text"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
             placeholder="Last name"
+            value={lname}
             onChange={(e) => setLname(e.target.value)}
           />
         </div>
@@ -74,6 +88,7 @@ function Register() {
             type="email"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
             placeholder="Enter email"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
@@ -85,6 +100,7 @@ function Register() {
             type="password"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
             placeholder="Enter password"
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
