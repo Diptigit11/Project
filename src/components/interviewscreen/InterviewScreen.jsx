@@ -21,7 +21,7 @@ export default function InterviewScreen() {
   const [sessionId, setSessionId] = useState(null);
   const [interviewStartTime, setInterviewStartTime] = useState(null);
   const [finishing, setFinishing] = useState(false); // New state for finishing process
-
+const [currentQuestionAnswered, setCurrentQuestionAnswered] = useState(false);
   // Load questions from localStorage and check authentication on component mount
   useEffect(() => {
     try {
@@ -82,81 +82,125 @@ export default function InterviewScreen() {
       setTimeUp(false);
     }
   }, [currentIndex, currentQuestion]);
-
-  const saveAudioForCurrent = (transcriptData) => {
-    setAnswers((prev) => {
-      const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
-      if (idx !== -1) {
-        const copy = [...prev];
-        copy[idx] = { 
-          ...copy[idx], 
-          transcription: transcriptData,  // Save transcript instead of audioURL
-          recordedAt: new Date().toISOString() 
-        };
-        return copy;
-      }
-      return [...prev, { 
-        questionId: currentQuestion.id, 
-        questionText: currentQuestion.text,
-        questionType: currentQuestion.type,
-        transcription: transcriptData,  // Save transcript instead of audioURL
-        recordedAt: new Date().toISOString() 
-      }];
-    });
-  };
-
-  const saveCodeForCurrent = (code) => {
-    setAnswers((prev) => {
-      const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
-      if (idx !== -1) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], code, submittedAt: new Date().toISOString() };
-        return copy;
-      }
-      return [...prev, { 
-        questionId: currentQuestion.id, 
-        questionText: currentQuestion.text,
-        questionType: currentQuestion.type,
-        code, 
-        submittedAt: new Date().toISOString() 
-      }];
-    });
-  };
-
-  const hasAnswer = () => {
+  useEffect(() => {
+  if (currentQuestion) {
+    setCurrentQuestionAnswered(false);
+    
+    // Check if this question already has an answer
     const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
-    if (currentQuestion.coding) {
-      return existingAnswer && existingAnswer.code;
+    if (existingAnswer) {
+      if (currentQuestion.coding) {
+        setCurrentQuestionAnswered(!!(existingAnswer.code && existingAnswer.code.trim()));
+      } else {
+        setCurrentQuestionAnswered(!!existingAnswer.transcription);
+      }
+    }
+  }
+}, [currentIndex, currentQuestion?.id]);
+
+const saveAudioForCurrent = (transcriptData) => {
+  setAnswers((prev) => {
+    const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
+    if (idx !== -1) {
+      const copy = [...prev];
+      copy[idx] = { 
+        ...copy[idx], 
+        transcription: transcriptData,
+        recordedAt: new Date().toISOString() 
+      };
+      return copy;
+    }
+    return [...prev, { 
+      questionId: currentQuestion.id, 
+      questionText: currentQuestion.text,
+      questionType: currentQuestion.type,
+      transcription: transcriptData,
+      recordedAt: new Date().toISOString() 
+    }];
+  });
+  
+  // Mark current question as answered only if transcriptData has content
+  if (transcriptData && transcriptData.trim()) {
+    setCurrentQuestionAnswered(true);
+  }
+};
+
+const saveCodeForCurrent = (code) => {
+  setAnswers((prev) => {
+    const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
+    if (idx !== -1) {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], code, submittedAt: new Date().toISOString() };
+      return copy;
+    }
+    return [...prev, { 
+      questionId: currentQuestion.id, 
+      questionText: currentQuestion.text,
+      questionType: currentQuestion.type,
+      code, 
+      submittedAt: new Date().toISOString() 
+    }];
+  });
+  
+  // Mark current question as answered if code is not empty
+  if (code && code.trim()) {
+    setCurrentQuestionAnswered(true);
+  }
+};
+
+const hasAnswer = () => {
+  if (!currentQuestion) return false;
+  
+  const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
+  if (!existingAnswer) return false;
+  
+  if (currentQuestion.coding) {
+    return !!(existingAnswer.code && existingAnswer.code.trim());
+  } else {
+    return !!(existingAnswer.transcription && existingAnswer.transcription.trim());
+  }
+};
+
+const handleNext = () => {
+  const hasCurrentAnswer = hasAnswer() || currentQuestionAnswered;
+  
+  if (!hasCurrentAnswer && !timeUp) {
+    const confirmSkip = window.confirm(
+      `You haven't ${currentQuestion.coding ? 'submitted code' : 'recorded an answer'}. Skip this question?`
+    );
+    if (!confirmSkip) return;
+
+    // Save empty answer for skipped question
+    setAnswers(prev => {
+      const exists = prev.find(a => a.questionId === currentQuestion.id);
+      if (exists) return prev;
+      return [...prev, { 
+        questionId: currentQuestion.id, 
+        questionText: currentQuestion.text,
+        questionType: currentQuestion.type,
+        skipped: true,
+        skippedAt: new Date().toISOString() 
+      }];
+    });
+  }
+
+  if (currentIndex < questions.length - 1) {
+    setCurrentIndex((p) => p + 1);
+    // Reset answered state for next question
+    setCurrentQuestionAnswered(false);
+  }
+};
+useEffect(() => {
+  setCurrentQuestionAnswered(false);
+  const existingAnswer = answers.find(a => a.questionId === currentQuestion?.id);
+  if (existingAnswer) {
+    if (currentQuestion?.coding) {
+      setCurrentQuestionAnswered(!!(existingAnswer.code && existingAnswer.code.trim()));
     } else {
-      return existingAnswer && existingAnswer.transcription;  // Check for transcription instead of audioURL
+      setCurrentQuestionAnswered(!!existingAnswer.transcription);
     }
-  };
-
-  const handleNext = () => {
-    if (!hasAnswer() && !timeUp) {
-      const confirmSkip = window.confirm(
-        `You haven't ${currentQuestion.coding ? 'submitted code' : 'recorded an answer'}. Skip this question?`
-      );
-      if (!confirmSkip) return;
-
-      // Save empty answer for skipped question
-      setAnswers(prev => {
-        const exists = prev.find(a => a.questionId === currentQuestion.id);
-        if (exists) return prev;
-        return [...prev, { 
-          questionId: currentQuestion.id, 
-          questionText: currentQuestion.text,
-          questionType: currentQuestion.type,
-          skipped: true,
-          skippedAt: new Date().toISOString() 
-        }];
-      });
-    }
-
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((p) => p + 1);
-    }
-  };
+  }
+}, [currentIndex, currentQuestion, answers]);
 
   const handleFinishInterview = async () => {
     setFinishing(true);
@@ -420,16 +464,16 @@ export default function InterviewScreen() {
             )}
           </button>
         ) : (
-          <button
-            onClick={handleNext}
-            disabled={!timeUp && !hasAnswer()}
-            className={`mt-6 w-full py-3 rounded-lg font-semibold transition-all 
-              ${(!timeUp && !hasAnswer())
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-[#012A4A] text-white hover:bg-[#024169]"}`}
-          >
-            Next Question →
-          </button>
+<button
+  onClick={handleNext}
+  disabled={!timeUp && !hasAnswer() && !currentQuestionAnswered}
+  className={`mt-6 w-full py-3 rounded-lg font-semibold transition-all 
+    ${(!timeUp && !hasAnswer() && !currentQuestionAnswered)
+      ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+      : "bg-[#012A4A] text-white hover:bg-[#024169]"}`}
+>
+  Next Question →
+</button>
         )}
 
         {/* Progress Info */}
