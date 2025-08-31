@@ -14,6 +14,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import FeedBackScreen from "./components/FeedbackScreen/FeedbackScreen";
 import ResumeUpload from "./components/resumeanalyser/ResumeUpload";
 import ResultPage from "./components/resumeanalyser/ResultPage";
+import AboutUs from "./components/AboutUs";
 
 // 🔒 ProtectedRoute component
 function ProtectedRoute({ children }) {
@@ -30,6 +31,7 @@ function Approutes() {
         <Route path="/bar" element={<Navbar />} />
         <Route path="/hel" element={<AIInterviewHero />} />
         <Route path="/about-us" element={<FeatureSection />} />
+         <Route path="/about" element={<AboutUs />} />
         
         {/* 🔒 Protected Routes */}
         <Route

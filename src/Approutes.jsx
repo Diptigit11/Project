@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import AIInterviewHero from './components/AIInterviewHero';
 import Footer from './components/Footer';
 import FeatureSection from './components/FeatureSection';
+import AboutUs from './components/AboutUs';
 function Approutes() {
   return (
     <Router>
@@ -13,6 +14,7 @@ function Approutes() {
         <Route path="/bar" element={<Navbar />} />
         <Route path="/hel" element={<AIInterviewHero />} />
          <Route path="/about-us" element={<FeatureSection />} />
+         <Route path="/about" element={<AboutUs />} />
 
           </Routes>
     </Router>
