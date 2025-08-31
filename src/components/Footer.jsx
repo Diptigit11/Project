@@ -19,7 +19,7 @@ function Footer() {
 
           {/* Nav Links */}
           <ul className="flex flex-wrap justify-center gap-4 text-sm sm:text-base font-medium text-gray-600">
-            <li><a href="#about" className="hover:text-[#012A4A]">About</a></li>
+            <li><a href="/about" className="hover:text-[#012A4A]">About</a></li>
             <li><a href="#privacy" className="hover:text-[#012A4A]">Privacy Policy</a></li>
             <li><a href="#terms" className="hover:text-[#012A4A]">Terms</a></li>
             <li><a href="#contact" className="hover:text-[#012A4A]">Contact</a></li>

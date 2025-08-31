@@ -27,11 +27,11 @@ export default function Navbar() {
       <div className="w-full max-w-none px-6 lg:px-12 py-4">
         <div className="flex items-center justify-between">
           {/* Logo + Brand */}
-          <div className="flex items-center space-x-3">
-            <span className="text-white font-bold text-2xl tracking-wide">
-              Mock<span className="text-yellow-400">Interview</span>
-            </span>
-          </div>
+<Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">             
+  <span className="text-white font-bold text-2xl tracking-wide">               
+    Mock<span className="text-yellow-400">Interview</span>             
+  </span>           
+</Link>
 
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-12">
