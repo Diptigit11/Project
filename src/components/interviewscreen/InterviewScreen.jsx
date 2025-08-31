@@ -6,6 +6,7 @@ import CodingEditor from "./CodingEditor";
 import CameraPreview from "./CameraPreview";
 import Timer from "./Timer";
 import ProgressBar from "./ProgressBar";
+import { Loader2 } from "lucide-react";
 
 export default function InterviewScreen() {
   const navigate = useNavigate();
@@ -17,10 +18,21 @@ export default function InterviewScreen() {
   const [timeUp, setTimeUp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sessionId, setSessionId] = useState(null);
+  const [interviewStartTime, setInterviewStartTime] = useState(null);
+  const [finishing, setFinishing] = useState(false); // New state for finishing process
 
-  // Load questions from localStorage on component mount
+  // Load questions from localStorage and check authentication on component mount
   useEffect(() => {
     try {
+      // Check if user is authenticated
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       const storedQuestions = localStorage.getItem("interviewQuestions");
       const storedMetadata = localStorage.getItem("interviewMetadata");
       
@@ -35,6 +47,22 @@ export default function InterviewScreen() {
       
       setQuestions(parsedQuestions);
       setMetadata(parsedMetadata);
+      
+      // Generate session ID and set start time
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const startTime = new Date().toISOString();
+      
+      setSessionId(newSessionId);
+      setInterviewStartTime(startTime);
+      
+      // Store session data for feedback screen
+      const sessionData = {
+        id: newSessionId,
+        startTime: startTime,
+        metadata: parsedMetadata
+      };
+      localStorage.setItem("sessionData", JSON.stringify(sessionData));
+      
       setLoading(false);
     } catch (error) {
       console.error("Error loading interview data:", error);
@@ -55,27 +83,27 @@ export default function InterviewScreen() {
     }
   }, [currentIndex, currentQuestion]);
 
-const saveAudioForCurrent = (transcriptData) => {
-  setAnswers((prev) => {
-    const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
-    if (idx !== -1) {
-      const copy = [...prev];
-      copy[idx] = { 
-        ...copy[idx], 
+  const saveAudioForCurrent = (transcriptData) => {
+    setAnswers((prev) => {
+      const idx = prev.findIndex(a => a.questionId === currentQuestion.id);
+      if (idx !== -1) {
+        const copy = [...prev];
+        copy[idx] = { 
+          ...copy[idx], 
+          transcription: transcriptData,  // Save transcript instead of audioURL
+          recordedAt: new Date().toISOString() 
+        };
+        return copy;
+      }
+      return [...prev, { 
+        questionId: currentQuestion.id, 
+        questionText: currentQuestion.text,
+        questionType: currentQuestion.type,
         transcription: transcriptData,  // Save transcript instead of audioURL
         recordedAt: new Date().toISOString() 
-      };
-      return copy;
-    }
-    return [...prev, { 
-      questionId: currentQuestion.id, 
-      questionText: currentQuestion.text,
-      questionType: currentQuestion.type,
-      transcription: transcriptData,  // Save transcript instead of audioURL
-      recordedAt: new Date().toISOString() 
-    }];
-  });
-};
+      }];
+    });
+  };
 
   const saveCodeForCurrent = (code) => {
     setAnswers((prev) => {
@@ -95,14 +123,14 @@ const saveAudioForCurrent = (transcriptData) => {
     });
   };
 
-const hasAnswer = () => {
-  const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
-  if (currentQuestion.coding) {
-    return existingAnswer && existingAnswer.code;
-  } else {
-    return existingAnswer && existingAnswer.transcription;  // Check for transcription instead of audioURL
-  }
-};
+  const hasAnswer = () => {
+    const existingAnswer = answers.find(a => a.questionId === currentQuestion.id);
+    if (currentQuestion.coding) {
+      return existingAnswer && existingAnswer.code;
+    } else {
+      return existingAnswer && existingAnswer.transcription;  // Check for transcription instead of audioURL
+    }
+  };
 
   const handleNext = () => {
     if (!hasAnswer() && !timeUp) {
@@ -129,50 +157,135 @@ const hasAnswer = () => {
       setCurrentIndex((p) => p + 1);
     }
   };
-const handleFinishInterview = async () => {
-  try {
-        console.log("Sending answers to backend:", JSON.stringify(answers, null, 2));
+
+  const handleFinishInterview = async () => {
+    setFinishing(true);
     
-    // Save the interview session
-    const sessionData = {
-      metadata,
-      questions,
-      startedAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-    };
-
-    const response = await fetch("http://localhost:5000/api/save-session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sessionData,
+    try {
+      console.log("Starting finish interview process...");
+      
+      // Get authentication token
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required. Please log in.");
+        setFinishing(false);
+        return;
+      }
+      
+      // Calculate interview duration
+      const endTime = new Date().toISOString();
+      const startTime = new Date(interviewStartTime);
+      const duration = Math.round((new Date(endTime) - startTime) / 1000); // Duration in seconds
+      
+      // Prepare session data with enhanced metadata
+      const sessionData = {
+        id: sessionId,
+        metadata: {
+          ...metadata,
+          totalInterviewTime: duration,
+          averageTimePerQuestion: Math.round(duration / questions.length)
+        },
+        questions,
         answers,
-      }),
-    });
+        startedAt: interviewStartTime,
+        completedAt: endTime,
+        completionRate: Math.round((answers.filter(a => !a.skipped).length / questions.length) * 100)
+      };
 
-    if (response.ok) {
-      const result = await response.json();
-      console.log("Session saved:", result);
+      console.log("Step 1: Saving session...");
       
-      // Store answers and questions for the feedback screen
-      localStorage.setItem("interviewAnswers", JSON.stringify(answers));
-      localStorage.setItem("lastInterviewSession", JSON.stringify(sessionData));
+      // Step 1: Save the interview session
+      const saveResponse = await fetch("http://localhost:5000/api/save-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sessionData,
+          answers,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        if (saveResponse.status === 401) {
+          localStorage.removeItem("token");
+          setError("Session expired. Please log in again.");
+          navigate("/login");
+          return;
+        }
+        
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || "Failed to save session");
+      }
+
+      const saveResult = await saveResponse.json();
+      console.log("Session saved successfully:", saveResult);
+
+      console.log("Step 2: Generating feedback...");
       
-      // Navigate to feedback screen instead of dashboard
+      // Step 2: Generate and save feedback to database
+      const feedbackResponse = await fetch("http://localhost:5000/api/generate/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sessionData,
+          answers,
+          questions,
+          metadata: {
+            ...metadata,
+            totalInterviewTime: duration,
+            averageTimePerQuestion: Math.round(duration / questions.length)
+          },
+          completionRate: Math.round((answers.filter(a => !a.skipped).length / questions.length) * 100)
+        }),
+      });
+
+      if (!feedbackResponse.ok) {
+        if (feedbackResponse.status === 401) {
+          localStorage.removeItem("token");
+          setError("Session expired. Please log in again.");
+          navigate("/login");
+          return;
+        }
+        
+        const errorData = await feedbackResponse.json();
+        throw new Error(errorData.error || "Failed to generate feedback");
+      }
+
+      const feedbackResult = await feedbackResponse.json();
+      console.log("Feedback generated and saved:", feedbackResult);
+
+      // Step 3: Store session ID for feedback screen to fetch from database
+      localStorage.setItem("currentSessionId", sessionId);
+      localStorage.removeItem("interviewAnswers"); // Remove local answers since we'll fetch from DB
+      localStorage.removeItem("interviewQuestions"); // Remove local questions since we'll fetch from DB
+      
+      console.log("Step 3: Navigating to feedback with session ID:", sessionId);
+      
+      // Navigate to feedback screen - it will fetch from database using session ID
       navigate("/feedback");
-    } else {
-      console.error("Failed to save session");
-      // Still navigate to feedback screen even if save fails
-      navigate("/feedback");
+      
+    } catch (error) {
+      console.error("Error finishing interview:", error);
+      setFinishing(false);
+      
+      // Handle different error types
+      if (error.message.includes("Authentication") || error.message.includes("log in")) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(error.message || "Failed to complete interview. Please try again.");
+      }
     }
-  } catch (error) {
-    console.error("Error saving session:", error);
-    // Still navigate to feedback screen even if save fails
-    navigate("/feedback");
-  }
-};
+  };
+
+  const handleAuthError = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
 
   // Loading state
   if (loading) {
@@ -196,12 +309,52 @@ const handleFinishInterview = async () => {
             <p className="text-red-600 mb-4">
               {error || "No interview questions available."}
             </p>
-            <button
-              onClick={() => navigate("/setup")}
-              className="bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors"
-            >
-              Go Back to Setup
-            </button>
+            <div className="space-y-2">
+              {error.includes("Authentication") || error.includes("log in") ? (
+                <button
+                  onClick={handleAuthError}
+                  className="w-full bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors"
+                >
+                  Go to Login
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/setup")}
+                  className="w-full bg-[#012A4A] text-white px-4 py-2 rounded-lg hover:bg-[#024169] transition-colors"
+                >
+                  Go Back to Setup
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Finishing interview loading state
+  if (finishing) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 text-[#012A4A] mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Finishing Interview</h2>
+          <p className="text-gray-500">Saving your responses and generating feedback...</p>
+          <div className="mt-6 bg-white rounded-lg p-4 shadow-sm max-w-md">
+            <div className="text-sm text-gray-600 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Saving interview session
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                Analyzing your responses
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                Generating detailed feedback
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -250,9 +403,21 @@ const handleFinishInterview = async () => {
         {currentIndex === questions.length - 1 ? (
           <button
             onClick={handleFinishInterview}
-            className="mt-6 w-full py-3 rounded-lg font-semibold transition-all bg-green-600 text-white hover:bg-green-700 flex justify-center"
+            disabled={finishing}
+            className={`mt-6 w-full py-3 rounded-lg font-semibold transition-all flex justify-center items-center gap-2 ${
+              finishing 
+                ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
           >
-            Finish Interview
+            {finishing ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                Finishing...
+              </>
+            ) : (
+              "Finish Interview"
+            )}
           </button>
         ) : (
           <button
@@ -314,6 +479,10 @@ const handleFinishInterview = async () => {
                 <span className="font-medium">{metadata.language || "JavaScript"}</span>
               </div>
             )}
+            <div className="flex justify-between">
+              <span>Session ID:</span>
+              <span className="font-medium text-xs">{sessionId?.substring(8, 16) || "N/A"}</span>
+            </div>
           </div>
         </div>
       </div>

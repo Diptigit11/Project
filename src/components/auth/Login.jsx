@@ -1,28 +1,40 @@
-import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
-import { auth } from "./firebase";
-import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import SignInWithGoogle from "./Signinwithgoogle";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success("User logged in successfully!", { position: "top-center" });
-      navigate("/profile");
-    } catch (error) {
-      toast.error(error.message, { position: "bottom-center" });
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      // Save token in localStorage
+      localStorage.setItem("token", data.token);
+
+      // Redirect to home/dashboard
+      navigate("/");
+    } catch (err) {
+      setError("Something went wrong");
     }
   };
 
   return (
-<div className="flex items-center justify-center min-h-screen  font-sans">
+    <div className="flex items-center justify-center min-h-screen font-sans">
       <form
         onSubmit={handleSubmit}
         className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border-t-4 border-yellow-400"
@@ -30,6 +42,10 @@ function Login() {
         <h3 className="text-2xl font-bold text-center mb-6 text-[#012A4A]">
           Login to your Account
         </h3>
+
+        {error && (
+          <p className="text-red-500 text-center mb-4 font-medium">{error}</p>
+        )}
 
         <div className="mb-4">
           <label className="block text-gray-700 mb-1">Email address</label>
@@ -71,10 +87,6 @@ function Login() {
             Register Here
           </a>
         </p>
-
-        <div className="mt-6">
-          <SignInWithGoogle />
-        </div>
       </form>
     </div>
   );

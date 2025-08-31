@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Play, Users, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function AIInterviewHero() {
   const [typedText, setTypedText] = useState('');
@@ -44,11 +45,11 @@ export default function AIInterviewHero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="group bg-[#012A4A] text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#023457] transition-all duration-300 shadow-md flex items-center">
+            <Link to="/interview" className="group bg-[#012A4A] text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#023457] transition-all duration-300 shadow-md flex items-center">
               <Play className="w-6 h-6 mr-2" />
               Start Free Interview
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Link>
 
             <button className="group border border-[#012A4A] text-[#012A4A] px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#012A4A] hover:text-white transition-all duration-300 flex items-center">
               <Users className="w-6 h-6 mr-2" />
