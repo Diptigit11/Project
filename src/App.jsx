@@ -16,6 +16,7 @@ import ResumeUpload from "./components/resumeanalyser/ResumeUpload";
 import ResultPage from "./components/resumeanalyser/ResultPage";
 import AboutUs from "./components/AboutUs";
 import InterviewHistoryPage from "./components/interviewscreen/InterviewHistoryPage";
+import ScrollToTop from "./components/ScrollToTop";
 
 // 🔒 ProtectedRoute component
 function ProtectedRoute({ children }) {
@@ -23,16 +24,32 @@ function ProtectedRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
+// Home page component combining Hero and Features
+function HomePage() {
+  return (
+    <>
+      <AIInterviewHero />
+      <FeatureSection />
+    </>
+  );
+}
+
 function Approutes() {
   return (
     <>
+      <ScrollToTop />
       <Navbar />
       <Routes>
-        <Route path="/" element={<><AIInterviewHero /><FeatureSection /></>} />
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Development/Testing Routes - Remove in production */}
         <Route path="/bar" element={<Navbar />} />
         <Route path="/hel" element={<AIInterviewHero />} />
         <Route path="/about-us" element={<FeatureSection />} />
-         <Route path="/about" element={<AboutUs />} />
         
         {/* 🔒 Protected Routes */}
         <Route
@@ -44,6 +61,14 @@ function Approutes() {
           }
         />
         <Route
+          path="/interviewscreen"
+          element={
+            <ProtectedRoute>
+              <InterviewScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/feedback-history"
           element={
             <ProtectedRoute>
@@ -51,8 +76,15 @@ function Approutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/feedback/:sessionId" element={<ProtectedRoute><FeedBackScreen /></ProtectedRoute>} />
-          <Route
+        <Route 
+          path="/feedback/:sessionId" 
+          element={
+            <ProtectedRoute>
+              <FeedBackScreen />
+            </ProtectedRoute>
+          } 
+        />
+        <Route
           path="/feedback"
           element={
             <ProtectedRoute>
@@ -65,14 +97,6 @@ function Approutes() {
           element={
             <ProtectedRoute>
               <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/interviewscreen"
-          element={
-            <ProtectedRoute>
-              <InterviewScreen />
             </ProtectedRoute>
           }
         />
@@ -100,10 +124,9 @@ function Approutes() {
             </ProtectedRoute>
           }
         />
-
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        
+        {/* Catch-all route for 404 pages */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Footer />
     </>
