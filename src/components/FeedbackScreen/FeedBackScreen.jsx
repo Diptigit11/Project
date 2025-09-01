@@ -857,7 +857,7 @@ export default function FeedbackScreen() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => navigate("/setup")}
+            onClick={() => navigate("/interview")}
             className="flex items-center justify-center gap-2 bg-[#012A4A] text-white px-6 py-3 rounded-lg hover:bg-[#024169] transition-colors font-medium"
           >
             <RotateCcw size={18} />
