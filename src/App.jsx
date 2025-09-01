@@ -15,6 +15,7 @@ import FeedBackScreen from "./components/FeedbackScreen/FeedbackScreen";
 import ResumeUpload from "./components/resumeanalyser/ResumeUpload";
 import ResultPage from "./components/resumeanalyser/ResultPage";
 import AboutUs from "./components/AboutUs";
+import InterviewHistoryPage from "./components/interviewscreen/InterviewHistoryPage";
 
 // 🔒 ProtectedRoute component
 function ProtectedRoute({ children }) {
@@ -43,6 +44,15 @@ function Approutes() {
           }
         />
         <Route
+          path="/feedback-history"
+          element={
+            <ProtectedRoute>
+              <InterviewHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/feedback/:sessionId" element={<ProtectedRoute><FeedBackScreen /></ProtectedRoute>} />
+          <Route
           path="/feedback"
           element={
             <ProtectedRoute>
