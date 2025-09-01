@@ -1,17 +1,6 @@
 import React, { useState } from "react";
 import {
-  Upload,
-  Briefcase,
-  FileText,
-  PlayCircle,
-  Users,
-  Brain,
-  Settings,
-  Building2,
-  Code2,
-  Clock,
-  ClipboardList,
-  Loader2,
+  Upload,Briefcase,FileText,PlayCircle,Users,Brain,Settings,Building2,Code2,Clock,ClipboardList,Loader2,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -19,6 +8,7 @@ export default function InterviewSetup() {
   const navigate = useNavigate();
   const [resumeFile, setResumeFile] = useState(null);
   const [role, setRole] = useState("");
+  const [customRole, setCustomRole] = useState("");
   const [company, setCompany] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [type, setType] = useState("technical");
@@ -31,11 +21,29 @@ export default function InterviewSetup() {
 
   const handleFileChange = (e) => setResumeFile(e.target.files[0]);
 
+  const handleRoleChange = (e) => {
+    const selectedRole = e.target.value;
+    setRole(selectedRole);
+    
+    // Clear custom role if a predefined role is selected
+    if (selectedRole !== "other") {
+      setCustomRole("");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!role || !jobDescription) {
+    // Get the actual role value (either from dropdown or custom input)
+    const actualRole = role === "other" ? customRole : role;
+    
+    if (!actualRole || !jobDescription) {
       setError("Please fill all required fields");
+      return;
+    }
+
+    if (role === "other" && !customRole.trim()) {
+      setError("Please enter your custom role");
       return;
     }
 
@@ -47,7 +55,7 @@ export default function InterviewSetup() {
       if (resumeFile) {
         formData.append("resume", resumeFile);
       }
-      formData.append("role", role);
+      formData.append("role", actualRole);
       formData.append("company", company || "General Company");
       formData.append("jobDescription", jobDescription);
       formData.append("type", type);
@@ -112,6 +120,7 @@ export default function InterviewSetup() {
     { value: "UI/UX Designer", label: "UI/UX Designer" },
     { value: "QA Engineer", label: "QA Engineer" },
     { value: "Mobile Developer", label: "Mobile Developer" },
+    { value: "other", label: "Other (Please specify)" },
   ];
 
   return (
@@ -165,7 +174,7 @@ export default function InterviewSetup() {
             </label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={handleRoleChange}
               className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700"
               required
             >
@@ -176,6 +185,20 @@ export default function InterviewSetup() {
                 </option>
               ))}
             </select>
+            
+            {/* Custom Role Input - Shows only when "Other" is selected */}
+            {role === "other" && (
+              <div className="mt-3">
+                <input
+                  type="text"
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value)}
+                  placeholder="Please specify your role (e.g., Blockchain Developer, AI Engineer, etc.)"
+                  className="w-full border border-gray-300 rounded-lg p-3 bg-white text-sm text-gray-700"
+                  required
+                />
+              </div>
+            )}
           </div>
 
           {/* Target Company */}
