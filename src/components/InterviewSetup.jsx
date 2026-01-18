@@ -295,7 +295,7 @@ export default function InterviewSetup() {
           </div>
 
           {/* Coding Toggle */}
-          {type === "technical" && (
+          {/* {type === "technical" && (
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-[#012A4A] mb-1">
                 <Code2 size={18} /> Include Coding Questions?
@@ -328,7 +328,7 @@ export default function InterviewSetup() {
                 </div>
               )}
             </div>
-          )}
+          )} */}
 
           {/* Duration */}
           <div>
